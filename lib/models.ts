@@ -23,7 +23,7 @@ export const MODEL_POOL: ModelOption[] = [
   { id: "moonshotai/kimi-k3-fast", name: "Kimi K3 Fast" },
   { id: "amazon/nova-2-lite", name: "Nova 2 Lite" },
   { id: "zai/glm-5.3", name: "GLM 5.3" },
-  { id: "bytedance/seed-2.1-turbo", name: "Seed 2.1 Turbo" },
+  { id: "bytedance/seed-1.8", name: "Seed 1.8" },
   { id: "minimax/minimax-m3", name: "MiniMax M3" },
   { id: "nvidia/nemotron-3.5-lightning", name: "Nemotron 3.5 Lightning" },
   { id: "cohere/command-a", name: "Command A" },

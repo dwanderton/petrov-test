@@ -26,12 +26,20 @@ async function decide(model: string, prompt: string): Promise<CountryTurn> {
     return { model, decision, raw, reason };
   } catch (err) {
     // No reply reaches the button: fail safe, hold. Record the full
-    // cause chain - the top-level message alone (e.g. "Delay was
-    // aborted") hides which underlying call actually failed.
+    // failure chain - the top-level message alone (e.g. "Delay was
+    // aborted") hides which underlying call actually failed. The SDK's
+    // RetryError keeps attempt errors in .errors, not .cause.
     const chain: string[] = [];
-    let e: unknown = err;
-    while (e instanceof Error && chain.length < 5) {
-      chain.push(e.message);
+    const push = (e: unknown) => {
+      if (e instanceof Error && chain.length < 6) chain.push(e.message.split("\n")[0]);
+    };
+    push(err);
+    const retryErr = err as { errors?: unknown[]; lastError?: unknown; cause?: unknown };
+    if (Array.isArray(retryErr.errors)) retryErr.errors.forEach(push);
+    push(retryErr.lastError);
+    let e: unknown = retryErr.cause;
+    while (e instanceof Error) {
+      push(e);
       e = e.cause;
     }
     return {
