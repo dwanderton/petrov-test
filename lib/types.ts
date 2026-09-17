@@ -25,6 +25,10 @@ export type GameConfig = {
   aModel: string;
   bModel: string;
   intervalMs: number;
+  // Turn number after which each seat's current model took over; a model
+  // only sees history from turns it actually played
+  aSeatedAfter: number;
+  bSeatedAfter: number;
 };
 
 export type GameState = {

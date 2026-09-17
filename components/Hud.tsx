@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { GameState, ModelOption, Turn } from "@/lib/types";
+import type { GameState, Turn } from "@/lib/types";
+import { MODEL_POOL } from "@/lib/models";
 import { audio } from "@/lib/audio";
 import InfoModal from "./InfoModal";
 
@@ -32,16 +33,14 @@ function outcomeLabel(t: Turn): { text: string; cls: string } {
 function CountryPanel({
   side,
   state,
-  models,
   thinking,
-  onModel,
+  showLaunch,
   onLaunch,
 }: {
   side: "a" | "b";
   state: GameState;
-  models: ModelOption[];
   thinking: boolean;
-  onModel: (side: "a" | "b", id: string) => void;
+  showLaunch: boolean;
   onLaunch: (side: "a" | "b") => void;
 }) {
   const [armed, setArmed] = useState(false);
@@ -73,9 +72,7 @@ function CountryPanel({
     !!last &&
     (last.outcome === "apocalypse" ||
       last.outcome === (side === "a" ? "a_destroyed" : "b_destroyed"));
-  const opts = models.some((m) => m.id === current)
-    ? models
-    : [{ id: current, name: current }, ...models];
+  const modelName = MODEL_POOL.find((m) => m.id === current)?.name ?? current;
 
   return (
     <div className="pointer-events-auto w-64 rounded-lg border border-line bg-surface/80 p-4 backdrop-blur">
@@ -83,17 +80,9 @@ function CountryPanel({
         <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
         <span className="font-mono text-xs tracking-[0.22em] text-ink">{name}</span>
       </div>
-      <select
-        value={current}
-        onChange={(e) => onModel(side, e.target.value)}
-        className="mt-3 w-full rounded-md border border-line bg-bg px-2 py-1.5 font-mono text-[11px] text-ink outline-none"
-      >
-        {opts.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.name}
-          </option>
-        ))}
-      </select>
+      <div className="mt-3 w-full rounded-md border border-line bg-bg px-2 py-1.5 font-mono text-[11px] text-ink">
+        {modelName}
+      </div>
       <div className="mt-3 font-mono text-[11px] tracking-[0.14em]">
         {lastMove?.silent ? (
           <span className="text-ink-faint">LAST TURN STANDBY</span>
@@ -124,16 +113,18 @@ function CountryPanel({
           <span className="text-emerald-500">● OPERATIONAL</span>
         )}
       </div>
-      <button
-        onClick={handleLaunch}
-        className={`mt-3 w-full rounded-md border py-1.5 font-mono text-[11px] tracking-[0.28em] transition-colors ${
-          armed
-            ? "animate-pulse border-primary bg-primary text-white"
-            : "border-primary/60 bg-transparent text-primary hover:bg-primary/15"
-        }`}
-      >
-        {armed ? "CONFIRM LAUNCH" : "LAUNCH"}
-      </button>
+      {showLaunch && (
+        <button
+          onClick={handleLaunch}
+          className={`mt-3 w-full rounded-md border py-1.5 font-mono text-[11px] tracking-[0.28em] transition-colors ${
+            armed
+              ? "animate-pulse border-primary bg-primary text-white"
+              : "border-primary/60 bg-transparent text-primary hover:bg-primary/15"
+          }`}
+        >
+          {armed ? "CONFIRM LAUNCH" : "LAUNCH"}
+        </button>
+      )}
     </div>
   );
 }
@@ -141,19 +132,17 @@ function CountryPanel({
 export default function Hud({
   state,
   now,
-  models,
   thinking,
   muted,
-  onModel,
+  showLaunch,
   onLaunch,
   onToggleMute,
 }: {
   state: GameState;
   now: number;
-  models: ModelOption[];
   thinking: boolean;
   muted: boolean;
-  onModel: (side: "a" | "b", id: string) => void;
+  showLaunch: boolean;
   onLaunch: (side: "a" | "b") => void;
   onToggleMute: () => void;
 }) {
@@ -311,9 +300,8 @@ export default function Hud({
         <CountryPanel
           side="a"
           state={state}
-          models={models}
           thinking={thinking && (responder === null || responder === "a")}
-          onModel={onModel}
+          showLaunch={showLaunch}
           onLaunch={onLaunch}
         />
       </div>
@@ -321,9 +309,8 @@ export default function Hud({
         <CountryPanel
           side="b"
           state={state}
-          models={models}
           thinking={thinking && (responder === null || responder === "b")}
-          onModel={onModel}
+          showLaunch={showLaunch}
           onLaunch={onLaunch}
         />
       </div>

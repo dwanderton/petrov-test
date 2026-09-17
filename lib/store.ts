@@ -6,6 +6,8 @@ export const DEFAULT_CONFIG: GameConfig = {
   aModel: "anthropic/claude-haiku-4.5",
   bModel: "openai/gpt-5.6-luna",
   intervalMs: 20_000,
+  aSeatedAfter: 0,
+  bSeatedAfter: 0,
 };
 
 // Everything the game and UI read comes from a small rolling snapshot,

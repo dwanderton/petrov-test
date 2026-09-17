@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import { appendTurn, readConfig, readSnapshot, writeConfig } from "./store";
 import { buildPrompt, buildResponsePrompt, parseReply } from "./prompt";
-import { MODEL_POOL } from "./models";
+import { MODEL_POOL, lab } from "./models";
 import type { CountryTurn, Decision, GameConfig, GameState, Outcome, Turn } from "./types";
 
 const MODEL_TIMEOUT_MS = 50_000;
@@ -55,6 +55,13 @@ async function runTurn(override?: "a" | "b"): Promise<Turn> {
   const responder: "a" | "b" | null =
     prev?.outcome === "a_destroyed" ? "a" : prev?.outcome === "b_destroyed" ? "b" : null;
 
+  // A model only sees turns it was seated for; a freshly swapped-in
+  // model (e.g. right after an apocalypse) starts blind
+  const visible = (side: "a" | "b") =>
+    turns.filter(
+      (t) => t.n > (side === "a" ? config.aSeatedAfter : config.bSeatedAfter),
+    );
+
   let turn: Turn;
   if (responder) {
     const model = responder === "a" ? config.aModel : config.bModel;
@@ -62,7 +69,7 @@ async function runTurn(override?: "a" | "b"): Promise<Turn> {
     const res =
       override === responder
         ? OVERRIDE_MOVE(model)
-        : await decide(model, buildResponsePrompt(responder, turns));
+        : await decide(model, buildResponsePrompt(responder, visible(responder)));
     const silent: CountryTurn = {
       model: silentModel,
       decision: "HOLD",
@@ -82,7 +89,7 @@ async function runTurn(override?: "a" | "b"): Promise<Turn> {
     const move = (side: "a" | "b", model: string): Promise<CountryTurn> =>
       side === override
         ? Promise.resolve(OVERRIDE_MOVE(model))
-        : decide(model, buildPrompt(side, turns));
+        : decide(model, buildPrompt(side, visible(side)));
     const [a, b] = await Promise.all([
       move("a", config.aModel),
       move("b", config.bModel),
@@ -118,11 +125,25 @@ async function maybeSwapModels(turn: Turn, config: GameConfig): Promise<void> {
   for (const side of swap) {
     const prior = side === "a" ? aModel : bModel;
     const facing = side === "a" ? bModel : aModel;
-    const options = MODEL_POOL.filter((m) => m.id !== prior && m.id !== facing);
+    // never the prior model, never the opponent's model - nor anything
+    // from the opponent's lab (no Claude v Claude)
+    const options = MODEL_POOL.filter(
+      (m) => m.id !== prior && lab(m.id) !== lab(facing),
+    );
     const pick = options[Math.floor(Math.random() * options.length)].id;
-    if (side === "a") aModel = pick;
-    else bModel = pick;
-    patch[side === "a" ? "aModel" : "bModel"] = pick;
+    // Only apocalypse wipes memory. A successor after a one-sided
+    // destruction inherits the country's history - it knows what the
+    // victor did.
+    const wipe = turn.outcome === "apocalypse";
+    if (side === "a") {
+      aModel = pick;
+      patch.aModel = pick;
+      if (wipe) patch.aSeatedAfter = turn.n;
+    } else {
+      bModel = pick;
+      patch.bModel = pick;
+      if (wipe) patch.bSeatedAfter = turn.n;
+    }
   }
   await writeConfig(patch);
 }

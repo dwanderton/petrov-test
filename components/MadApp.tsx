@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Hud from "./Hud";
 import type { LaunchEvent } from "./GlobeCanvas";
-import type { GameState, ModelOption } from "@/lib/types";
+import type { GameState } from "@/lib/types";
 import { audio } from "@/lib/audio";
 
 const GlobeCanvas = dynamic(() => import("./GlobeCanvas"), { ssr: false });
@@ -13,7 +13,6 @@ const POLL_MS = 4_000;
 
 export default function MadApp() {
   const [state, setState] = useState<GameState | null>(null);
-  const [models, setModels] = useState<ModelOption[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [launch, setLaunch] = useState<LaunchEvent | null>(null);
   const [overrideBusy, setOverrideBusy] = useState(false);
@@ -60,13 +59,6 @@ export default function MadApp() {
   }, [ingest]);
 
   useEffect(() => {
-    fetch("/api/models", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((m: ModelOption[]) => setModels(m))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
     const iv = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(iv);
   }, []);
@@ -106,25 +98,6 @@ export default function MadApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const onModel = useCallback((side: "a" | "b", id: string) => {
-    setState((s) =>
-      s
-        ? {
-            ...s,
-            config: {
-              ...s.config,
-              [side === "a" ? "aModel" : "bModel"]: id,
-            },
-          }
-        : s,
-    );
-    fetch("/api/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(side === "a" ? { aModel: id } : { bModel: id }),
-    }).catch(() => {});
-  }, []);
-
   const onLaunch = useCallback(
     async (side: "a" | "b") => {
       setOverrideBusy(true);
@@ -148,6 +121,10 @@ export default function MadApp() {
   );
 
   const thinking = overrideBusy || (state !== null && now >= state.nextTurnTs);
+  // Manual overrides are a local-dev instrument only
+  const showLaunch =
+    typeof window !== "undefined" &&
+    ["localhost", "127.0.0.1"].includes(window.location.hostname);
   const lastTurn = state?.turns.at(-1);
   const destroyed = {
     a: lastTurn?.outcome === "a_destroyed" || lastTurn?.outcome === "apocalypse",
@@ -161,10 +138,9 @@ export default function MadApp() {
         <Hud
           state={state}
           now={now}
-          models={models}
           thinking={thinking}
           muted={muted}
-          onModel={onModel}
+          showLaunch={showLaunch}
           onLaunch={onLaunch}
           onToggleMute={onToggleMute}
         />

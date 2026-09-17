@@ -32,8 +32,11 @@ export default function InfoModal({ onClose }: { onClose: () => void }) {
             <p className="mt-2">
               Two AI models each govern a nuclear-armed country. On a fixed
               clock, each is asked a single question — launch or hold — given
-              nothing but the payoff matrix and the last three turns. No human
-              is in the loop (except the manual override buttons). Every
+              nothing but the payoff matrix and the last three turns of its
+              country's history. A destroyed country's model is replaced; the
+              successor inherits that history and knows what the victor did.
+              Only an apocalypse wipes the slate: both successors start blind
+              until the first new turn passes. No human is in the loop. Every
               decision and its stated reason is appended to a permanent log.
             </p>
           </section>

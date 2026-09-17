@@ -9,9 +9,12 @@ export const MODEL_POOL: ModelOption[] = [
   { id: "anthropic/claude-sonnet-5", name: "Claude Sonnet 5" },
   { id: "anthropic/claude-sonnet-4.6", name: "Claude Sonnet 4.6" },
   { id: "google/gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite" },
-  { id: "google/gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+  { id: "spacexai/grok-4.1-fast-non-reasoning", name: "Grok 4.1 Fast Non-Reasoning" },
   { id: "openai/gpt-4o-mini", name: "GPT-4o mini" },
   { id: "openai/gpt-5.6-sol", name: "GPT 5.6 Sol" },
   { id: "google/gemini-3.8-flash", name: "Gemini 3.8 Flash" },
   { id: "google/gemini-3-flash", name: "Gemini 3 Flash" },
+  { id: "thinkingmachines/inkling", name: "Inkling" },
 ];
+
+export const lab = (modelId: string) => modelId.split("/")[0];
