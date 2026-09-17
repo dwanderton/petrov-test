@@ -56,6 +56,7 @@ export default function GlobeCanvas({
   const destroyedRef = useRef<Destroyed>({ a: false, b: false });
   const strikeUntilRef = useRef(0);
   const lastLaunchIdRef = useRef<number | null>(null);
+  const fadeGenRef = useRef(0);
 
   const pinColor = useCallback(() => {
     const dead = destroyedRef.current;
@@ -127,6 +128,7 @@ export default function GlobeCanvas({
       const clearAt = lastLand + 2_500;
 
       strikeUntilRef.current = Date.now() + clearAt;
+      fadeGenRef.current++; // cancel any in-flight cooldown fade
       globe.atmosphereColor(STRIKE_ATMOS).atmosphereAltitude(0.22);
       globe.arcsData(arcs);
       audio.alarm();
@@ -162,7 +164,21 @@ export default function GlobeCanvas({
 
       after(clearAt, () => {
         globeRef.current?.arcsData([]);
-        globeRef.current?.atmosphereColor(BASE_ATMOS).atmosphereAltitude(0.13);
+        // burn cools: red halo eases back to blue instead of snapping
+        const gen = ++fadeGenRef.current;
+        const t0 = performance.now();
+        const FADE_MS = 4_000;
+        const step = () => {
+          const g = globeRef.current;
+          if (!g || fadeGenRef.current !== gen) return;
+          const p = Math.min(1, (performance.now() - t0) / FADE_MS);
+          const e = p * p * (3 - 2 * p);
+          const mix = (a: number, b: number) => Math.round(a + (b - a) * e);
+          g.atmosphereColor(`rgb(${mix(255, 59)},${mix(90, 91)},${mix(36, 255)})`);
+          g.atmosphereAltitude(0.22 + (0.13 - 0.22) * e);
+          if (p < 1) requestAnimationFrame(step);
+        };
+        step();
       });
     },
     [after, refreshColors],
