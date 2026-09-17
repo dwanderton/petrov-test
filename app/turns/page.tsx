@@ -88,11 +88,13 @@ export default async function TurnsPage() {
                 <th className="px-3 py-2 font-normal">COUNTRY A</th>
                 <th className="px-3 py-2 font-normal">COUNTRY B</th>
                 <th className="px-3 py-2 font-normal">OUTCOME</th>
+                <th className="px-3 py-2 font-normal">STATUS</th>
               </tr>
             </thead>
             <tbody>
               {turns.map((t) => {
                 const o = outcomeLabel(t);
+                const hadError = !!t.a.error || !!t.b.error;
                 return (
                   <tr
                     key={`${t.n}-${t.ts}`}
@@ -111,12 +113,19 @@ export default async function TurnsPage() {
                       <MoveCell move={t.b} />
                     </td>
                     <td className={`whitespace-nowrap px-3 py-2 ${o.cls}`}>{o.text}</td>
+                    <td className="whitespace-nowrap px-3 py-2">
+                      {hadError ? (
+                        <span className="text-amber-500">ERROR</span>
+                      ) : (
+                        <span className="text-emerald-500">OK</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {turns.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-8 text-center text-ink-faint">
+                  <td colSpan={6} className="px-3 py-8 text-center text-ink-faint">
                     NO TURNS YET
                   </td>
                 </tr>

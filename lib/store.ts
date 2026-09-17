@@ -56,7 +56,6 @@ const STATE_KEY = "petrov:state";
 const TURNS_KEY = "petrov:turns";
 const CONFIG_KEY = "petrov:config";
 const LOCK_KEY = "petrov:lock";
-const MIGRATED_KEY = "petrov:migrated-from-blob";
 
 import type { Redis } from "@upstash/redis";
 let redisClient: Redis | null = null;
@@ -69,42 +68,6 @@ async function redis(): Promise<Redis> {
     });
   }
   return redisClient;
-}
-
-// One-time carry-over of the game state from the earlier Blob backend
-async function migrateFromBlob(): Promise<Snapshot | null> {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
-  const r = await redis();
-  const claimed = await r.set(MIGRATED_KEY, "1", { nx: true });
-  if (claimed === null) return null; // someone else migrated or is migrating
-  try {
-    const { head, list } = await import("@vercel/blob");
-    const meta = await head("petrov/state.json");
-    const res = await fetch(`${meta.url}?ts=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) return null;
-    const snap = (await res.json()) as Snapshot;
-
-    const blobs: { pathname: string; url: string }[] = [];
-    let cursor: string | undefined;
-    do {
-      const page = await list({ prefix: "petrov/archive/", cursor });
-      blobs.push(...page.blobs);
-      cursor = page.hasMore ? page.cursor : undefined;
-    } while (cursor);
-    blobs.sort((x, y) => x.pathname.localeCompare(y.pathname));
-    const byN = new Map<number, Turn>();
-    for (const b of blobs) {
-      const chunkRes = await fetch(`${b.url}?ts=${Date.now()}`, { cache: "no-store" });
-      if (!chunkRes.ok) continue;
-      for (const t of (await chunkRes.json()) as Turn[]) byN.set(t.n, t);
-    }
-    const turns = [...byN.values()].sort((x, y) => x.n - y.n);
-    if (turns.length > 0) await r.rpush(TURNS_KEY, ...turns.map((t) => JSON.stringify(t)));
-    await r.set(STATE_KEY, snap);
-    return snap;
-  } catch {
-    return null;
-  }
 }
 
 // ---- local file backend ----
@@ -154,8 +117,7 @@ export async function readSnapshot(): Promise<Snapshot> {
   if (useRedis) {
     const r = await redis();
     const snap = await r.get<Snapshot>(STATE_KEY);
-    if (snap) return { ...EMPTY, ...snap };
-    return (await migrateFromBlob()) ?? EMPTY;
+    return snap ? { ...EMPTY, ...snap } : EMPTY;
   }
   return localSnapshot();
 }
@@ -178,7 +140,6 @@ export async function appendTurn(turn: Turn): Promise<Snapshot> {
 // Full history export. Cold path only - the game never reads this back.
 export async function readAllTurns(): Promise<Turn[]> {
   if (useRedis) {
-    await readSnapshot(); // triggers blob migration if it hasn't run yet
     const r = await redis();
     const raw = await r.lrange<Turn | string>(TURNS_KEY, 0, -1);
     const turns = raw.map((v) => (typeof v === "string" ? (JSON.parse(v) as Turn) : v));
