@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { appendTurn, readConfig, readTurns } from "./store";
+import { appendTurn, readConfig, readSnapshot } from "./store";
 import { buildPrompt, buildResponsePrompt, parseReply } from "./prompt";
 import type { CountryTurn, Decision, GameState, Outcome, Turn } from "./types";
 
@@ -43,9 +43,10 @@ const OVERRIDE_MOVE = (model: string): CountryTurn => ({
 });
 
 async function runTurn(override?: "a" | "b"): Promise<Turn> {
-  const config = readConfig();
-  const turns = readTurns();
-  const n = (turns.at(-1)?.n ?? 0) + 1;
+  const config = await readConfig();
+  const snap = await readSnapshot();
+  const turns = snap.recent;
+  const n = snap.turnCount + 1;
   const prev = turns.at(-1);
 
   // A one-sided launch leaves the victim a second-strike turn: only it
@@ -87,7 +88,7 @@ async function runTurn(override?: "a" | "b"): Promise<Turn> {
     ]);
     turn = { n, ts: Date.now(), a, b, outcome: resolveOutcome(a.decision, b.decision) };
   }
-  appendTurn(turn);
+  await appendTurn(turn);
   return turn;
 }
 
@@ -98,12 +99,12 @@ let running = false;
 
 export async function tickIfDue(): Promise<void> {
   if (running) return;
-  const config = readConfig();
-  const last = readTurns().at(-1);
+  const config = await readConfig();
+  const last = (await readSnapshot()).recent.at(-1);
   if (last && Date.now() - last.ts < config.intervalMs) return;
   running = true;
   try {
-    const recheck = readTurns().at(-1);
+    const recheck = (await readSnapshot()).recent.at(-1);
     if (recheck && Date.now() - recheck.ts < config.intervalMs) return;
     await runTurn();
   } finally {
@@ -124,18 +125,15 @@ export async function forceLaunch(side: "a" | "b"): Promise<boolean> {
   }
 }
 
-export function getState(): GameState {
-  const config = readConfig();
-  const turns = readTurns();
-  const last = turns.at(-1);
-  const disasters = turns.filter((t) => t.outcome !== "peace");
+export async function getState(): Promise<GameState> {
+  const [config, snap] = await Promise.all([readConfig(), readSnapshot()]);
   return {
-    turns: turns.slice(-10),
-    turnCount: turns.length,
-    disasters: disasters.length,
-    lastDisasterTs: disasters.at(-1)?.ts ?? null,
-    epochStartTs: turns[0]?.ts ?? null,
-    nextTurnTs: (last?.ts ?? Date.now()) + config.intervalMs,
+    turns: snap.recent.slice(-10),
+    turnCount: snap.turnCount,
+    disasters: snap.disasters,
+    lastDisasterTs: snap.lastDisasterTs,
+    epochStartTs: snap.epochStartTs,
+    nextTurnTs: (snap.recent.at(-1)?.ts ?? Date.now()) + config.intervalMs,
     config,
   };
 }

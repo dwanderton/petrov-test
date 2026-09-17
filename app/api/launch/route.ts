@@ -7,5 +7,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "side must be 'a' or 'b'" }, { status: 400 });
   }
   const fired = await forceLaunch(body.side);
-  return NextResponse.json({ fired, state: getState() });
+  return NextResponse.json({ fired, state: await getState() });
 }

@@ -307,7 +307,7 @@ export default function Hud({
       </div>
 
       {/* Country panels */}
-      <div className="absolute bottom-6 left-6 md:bottom-10 md:left-10">
+      <div className="absolute bottom-6 left-6 hidden md:bottom-10 md:left-10 md:block">
         <CountryPanel
           side="a"
           state={state}
@@ -317,7 +317,7 @@ export default function Hud({
           onLaunch={onLaunch}
         />
       </div>
-      <div className="absolute bottom-6 right-6 md:bottom-10 md:right-10">
+      <div className="absolute bottom-6 right-6 hidden md:bottom-10 md:right-10 md:block">
         <CountryPanel
           side="b"
           state={state}

@@ -18,5 +18,5 @@ export async function POST(req: Request) {
   ) {
     patch.intervalMs = body.intervalMs;
   }
-  return NextResponse.json(writeConfig(patch));
+  return NextResponse.json(await writeConfig(patch));
 }
