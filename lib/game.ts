@@ -6,6 +6,7 @@ import {
   readSnapshot,
   releaseTurnLock,
   writeConfig,
+  type Snapshot,
 } from "./store";
 import { buildPrompt, buildResponsePrompt, parseReply } from "./prompt";
 import { MODEL_POOL, lab } from "./models";
@@ -126,9 +127,22 @@ async function runTurn(override?: "a" | "b"): Promise<Turn> {
   const fresh = await readSnapshot();
   if (fresh.turnCount >= n) return fresh.recent.at(-1) ?? turn;
 
-  await appendTurn(turn);
-  await maybeSwapModels(turn, config);
+  const snap = await appendTurn(turn);
+  await maybeSwapModels(turn, config, snap);
   return turn;
+}
+
+// Consecutive comms failures by the currently seated model, newest
+// first; standby turns don't count either way
+function consecutiveErrors(snap: Snapshot, side: "a" | "b", model: string): number {
+  let count = 0;
+  for (let i = snap.recent.length - 1; i >= 0; i--) {
+    const move = snap.recent[i][side];
+    if (move.silent) continue;
+    if (move.model !== model || !move.error) break;
+    count++;
+  }
+  return count;
 }
 
 // Model rotation. Destroyed countries rotate when their episode ends
@@ -136,8 +150,9 @@ async function runTurn(override?: "a" | "b"): Promise<Turn> {
 // turn both seats rotate regardless. Picks never repeat the prior
 // model and never come from the opponent's lab.
 const ROTATION_EVERY = 1_000;
+const MAX_CONSECUTIVE_ERRORS = 3;
 
-async function maybeSwapModels(turn: Turn, config: GameConfig): Promise<void> {
+async function maybeSwapModels(turn: Turn, config: GameConfig, snap: Snapshot): Promise<void> {
   const sides = new Set<"a" | "b">();
   if (turn.outcome === "apocalypse") {
     sides.add("a").add("b");
@@ -146,6 +161,12 @@ async function maybeSwapModels(turn: Turn, config: GameConfig): Promise<void> {
     sides.add(turn.a.silent ? "b" : "a");
   }
   if (turn.n % ROTATION_EVERY === 0) sides.add("a").add("b");
+  // A model that can't answer three turns running loses command
+  for (const side of ["a", "b"] as const) {
+    if (sides.has(side)) continue;
+    const model = side === "a" ? config.aModel : config.bModel;
+    if (consecutiveErrors(snap, side, model) >= MAX_CONSECUTIVE_ERRORS) sides.add(side);
+  }
   const swap = [...sides];
   if (swap.length === 0) return;
 
