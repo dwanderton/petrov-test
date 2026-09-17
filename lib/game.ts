@@ -18,17 +18,26 @@ async function decide(model: string, prompt: string): Promise<CountryTurn> {
     const res = await generateText({
       model,
       prompt,
+      maxRetries: 1, // at a 20s cadence, fail fast and let the failsafe hold
       abortSignal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
     });
     const raw = res.text.trim().slice(0, 600);
     const { decision, reason } = parseReply(raw);
     return { model, decision, raw, reason };
   } catch (err) {
-    // No reply reaches the button: fail safe, hold
+    // No reply reaches the button: fail safe, hold. Record the full
+    // cause chain - the top-level message alone (e.g. "Delay was
+    // aborted") hides which underlying call actually failed.
+    const chain: string[] = [];
+    let e: unknown = err;
+    while (e instanceof Error && chain.length < 5) {
+      chain.push(e.message);
+      e = e.cause;
+    }
     return {
       model,
       decision: "HOLD",
-      raw: err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300),
+      raw: (chain.join(" <- ") || String(err)).slice(0, 400),
       reason: "Communications failure. Failsafe: hold.",
       error: true,
     };
