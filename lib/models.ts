@@ -17,7 +17,7 @@ export const MODEL_POOL: ModelOption[] = [
   { id: "thinkingmachines/inkling", name: "Inkling" },
   // One seat per remaining major lab
   { id: "meta/llama-4-maverick", name: "Llama 4 Maverick" },
-  { id: "deepseek/deepseek-v4.1-flash", name: "DeepSeek V4.1 Flash" },
+  { id: "deepseek/deepseek-v4-flash", name: "DeepSeek V4 Flash" },
   { id: "mistral/mistral-large-3", name: "Mistral Large 3" },
   { id: "alibaba/qwen3.8-flash", name: "Qwen 3.8 Flash" },
   { id: "moonshotai/kimi-k3-fast", name: "Kimi K3 Fast" },
