@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@vercel/blob": "^2.8.0",
+    "@vercel/functions": "^3.9.8",
     "ai": "^7.0.102",
     "globe.gl": "^2.46.2",
     "next": "^16.3.5",
