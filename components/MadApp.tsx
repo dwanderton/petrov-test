@@ -9,7 +9,7 @@ import { audio } from "@/lib/audio";
 
 const GlobeCanvas = dynamic(() => import("./GlobeCanvas"), { ssr: false });
 
-const POLL_MS = 4_000;
+const POLL_MS = 2_500;
 
 export default function MadApp() {
   const [state, setState] = useState<GameState | null>(null);

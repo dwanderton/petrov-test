@@ -32,3 +32,37 @@ select option {
   background: var(--surface);
   color: var(--ink);
 }
+
+@keyframes model-intro {
+  0% {
+    background: color-mix(in oklab, var(--primary) 50%, transparent);
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    background: var(--bg);
+  }
+}
+.model-intro {
+  animation: model-intro 5s ease-out;
+}
+
+@keyframes intro-badge {
+  0% {
+    opacity: 0;
+  }
+  12%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.model-intro-badge {
+  animation: intro-badge 5s ease-out forwards;
+}

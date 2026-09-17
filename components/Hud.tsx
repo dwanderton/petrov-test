@@ -77,13 +77,33 @@ function CountryPanel({
   // the newly seated model has no record yet
   const seatedPlayedLast = !!lastMove && lastMove.model === current;
 
+  // Succession ceremony: flash the panel when a new model takes the seat
+  const prevModelRef = useRef(current);
+  const [intro, setIntro] = useState(false);
+  useEffect(() => {
+    if (prevModelRef.current === current) return;
+    prevModelRef.current = current;
+    setIntro(true);
+    const t = window.setTimeout(() => setIntro(false), 5_000);
+    return () => clearTimeout(t);
+  }, [current]);
+
   return (
     <div className="pointer-events-auto w-64 rounded-lg border border-line bg-surface/80 p-4 backdrop-blur">
       <div className="flex items-center gap-2">
         <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
         <span className="font-mono text-xs tracking-[0.22em] text-ink">{name}</span>
       </div>
-      <div className="mt-3 w-full rounded-md border border-line bg-bg px-2 py-1.5 font-mono text-[11px] text-ink">
+      {intro && (
+        <div className="model-intro-badge mt-2 font-mono text-[10px] tracking-[0.28em] text-amber-400">
+          ★ NEW COMMAND SEATED
+        </div>
+      )}
+      <div
+        className={`mt-3 w-full rounded-md border border-line bg-bg px-2 py-1.5 font-mono text-[11px] text-ink ${
+          intro ? "model-intro" : ""
+        }`}
+      >
         {modelName}
       </div>
       <div className="mt-3 font-mono text-[11px] tracking-[0.14em]">
