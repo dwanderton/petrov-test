@@ -147,10 +147,11 @@ async function maybeSwapModels(turn: Turn, config: GameConfig): Promise<void> {
   for (const side of swap) {
     const prior = side === "a" ? aModel : bModel;
     const facing = side === "a" ? bModel : aModel;
-    // never the prior model, never the opponent's model - nor anything
-    // from the opponent's lab (no Claude v Claude)
+    // never from the opponent's lab (no Claude v Claude) and never from
+    // the outgoing model's own lab either - a sibling successor reads
+    // as no change at all
     const options = MODEL_POOL.filter(
-      (m) => m.id !== prior && lab(m.id) !== lab(facing),
+      (m) => lab(m.id) !== lab(facing) && lab(m.id) !== lab(prior),
     );
     const pick = options[Math.floor(Math.random() * options.length)].id;
     // Only apocalypse wipes memory. A successor after a one-sided

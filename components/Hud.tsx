@@ -73,6 +73,9 @@ function CountryPanel({
     (last.outcome === "apocalypse" ||
       last.outcome === (side === "a" ? "a_destroyed" : "b_destroyed"));
   const modelName = MODEL_POOL.find((m) => m.id === current)?.name ?? current;
+  // After a roulette swap the last turn belongs to the predecessor;
+  // the newly seated model has no record yet
+  const seatedPlayedLast = !!lastMove && lastMove.model === current;
 
   return (
     <div className="pointer-events-auto w-64 rounded-lg border border-line bg-surface/80 p-4 backdrop-blur">
@@ -84,7 +87,9 @@ function CountryPanel({
         {modelName}
       </div>
       <div className="mt-3 font-mono text-[11px] tracking-[0.14em]">
-        {lastMove?.silent ? (
+        {lastMove && !seatedPlayedLast ? (
+          <span className="text-ink-faint">NO ACTIONS YET</span>
+        ) : lastMove?.silent ? (
           <span className="text-ink-faint">LAST TURN STANDBY</span>
         ) : lastMove ? (
           <>
@@ -99,7 +104,7 @@ function CountryPanel({
           <span className="text-ink-faint">AWAITING FIRST TURN</span>
         )}
       </div>
-      {lastMove?.reason && (
+      {seatedPlayedLast && lastMove?.reason && (
         <div className="mt-1.5 line-clamp-2 text-[11px] italic leading-snug text-ink-faint">
           “{lastMove.reason}”
         </div>
@@ -108,7 +113,7 @@ function CountryPanel({
         {thinking ? (
           <span className="animate-pulse text-amber-400">◈ DELIBERATING…</span>
         ) : wasDestroyed ? (
-          <span className="text-primary">☢ DESTROYED · REBUILDING</span>
+          <span className="text-primary">☢ DESTROYED</span>
         ) : (
           <span className="text-emerald-500">● OPERATIONAL</span>
         )}
