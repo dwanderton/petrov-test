@@ -121,6 +121,41 @@ export async function readSnapshot(): Promise<Snapshot> {
   return localSnapshot();
 }
 
+// Full history export: stitch every archive chunk back together.
+// Cold path only - the game itself never calls this.
+export async function readAllTurns(): Promise<Turn[]> {
+  if (!useBlob) {
+    ensureDir();
+    if (!fs.existsSync(TURNS_FILE)) return [];
+    const turns: Turn[] = [];
+    for (const line of fs.readFileSync(TURNS_FILE, "utf8").split("\n")) {
+      if (!line.trim()) continue;
+      try {
+        turns.push(JSON.parse(line));
+      } catch {
+        // skip corrupt line
+      }
+    }
+    return turns;
+  }
+  const { list } = await import("@vercel/blob");
+  const blobs: { pathname: string; url: string }[] = [];
+  let cursor: string | undefined;
+  do {
+    const res = await list({ prefix: "petrov/archive/", cursor });
+    blobs.push(...res.blobs);
+    cursor = res.hasMore ? res.cursor : undefined;
+  } while (cursor);
+  blobs.sort((x, y) => x.pathname.localeCompare(y.pathname));
+  const byN = new Map<number, Turn>();
+  for (const b of blobs) {
+    const res = await fetch(`${b.url}?ts=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) continue;
+    for (const t of (await res.json()) as Turn[]) byN.set(t.n, t);
+  }
+  return [...byN.values()].sort((x, y) => x.n - y.n);
+}
+
 export async function appendTurn(turn: Turn): Promise<Snapshot> {
   if (useBlob) {
     const snap = applyTurn(await readSnapshot(), turn);

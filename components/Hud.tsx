@@ -198,6 +198,13 @@ export default function Hud({
         >
           ⓘ ABOUT
         </button>
+        <a
+          href="/api/turns"
+          download="petrov-turns.jsonl"
+          className="pointer-events-auto rounded-md border border-line bg-surface/80 px-3 py-1.5 font-mono text-[10px] tracking-[0.22em] text-ink-muted backdrop-blur hover:text-ink"
+        >
+          ⬇ ALL TURNS
+        </a>
       </div>
       {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
 
