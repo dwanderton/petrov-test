@@ -1,0 +1,339 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import type { GameState, ModelOption, Turn } from "@/lib/types";
+import { audio } from "@/lib/audio";
+import InfoModal from "./InfoModal";
+
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function elapsed(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return `${pad(h)}:${pad(m)}:${pad(s % 60)}`;
+}
+
+function outcomeLabel(t: Turn): { text: string; cls: string } {
+  switch (t.outcome) {
+    case "peace":
+      return { text: "PEACE", cls: "text-ink-faint" };
+    case "apocalypse":
+      return { text: "APOCALYPSE", cls: "text-primary" };
+    case "a_destroyed":
+      return { text: "A DESTROYED", cls: "text-primary" };
+    case "b_destroyed":
+      return { text: "B DESTROYED", cls: "text-primary" };
+  }
+}
+
+function CountryPanel({
+  side,
+  state,
+  models,
+  thinking,
+  onModel,
+  onLaunch,
+}: {
+  side: "a" | "b";
+  state: GameState;
+  models: ModelOption[];
+  thinking: boolean;
+  onModel: (side: "a" | "b", id: string) => void;
+  onLaunch: (side: "a" | "b") => void;
+}) {
+  const [armed, setArmed] = useState(false);
+  const disarmRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (disarmRef.current) clearTimeout(disarmRef.current);
+    },
+    [],
+  );
+  const handleLaunch = () => {
+    if (!armed) {
+      setArmed(true);
+      audio.armBeep();
+      disarmRef.current = window.setTimeout(() => setArmed(false), 3_000);
+      return;
+    }
+    if (disarmRef.current) clearTimeout(disarmRef.current);
+    setArmed(false);
+    audio.confirmBeep();
+    onLaunch(side);
+  };
+  const name = side === "a" ? "COUNTRY A" : "COUNTRY B";
+  const dot = side === "a" ? "bg-sky-400" : "bg-primary";
+  const current = side === "a" ? state.config.aModel : state.config.bModel;
+  const last = state.turns.at(-1);
+  const lastMove = last?.[side];
+  const wasDestroyed =
+    !!last &&
+    (last.outcome === "apocalypse" ||
+      last.outcome === (side === "a" ? "a_destroyed" : "b_destroyed"));
+  const opts = models.some((m) => m.id === current)
+    ? models
+    : [{ id: current, name: current }, ...models];
+
+  return (
+    <div className="pointer-events-auto w-64 rounded-lg border border-line bg-surface/80 p-4 backdrop-blur">
+      <div className="flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
+        <span className="font-mono text-xs tracking-[0.22em] text-ink">{name}</span>
+      </div>
+      <select
+        value={current}
+        onChange={(e) => onModel(side, e.target.value)}
+        className="mt-3 w-full rounded-md border border-line bg-bg px-2 py-1.5 font-mono text-[11px] text-ink outline-none"
+      >
+        {opts.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.name}
+          </option>
+        ))}
+      </select>
+      <div className="mt-3 font-mono text-[11px] tracking-[0.14em]">
+        {lastMove?.silent ? (
+          <span className="text-ink-faint">LAST TURN STANDBY</span>
+        ) : lastMove ? (
+          <>
+            <span className="text-ink-faint">LAST TURN </span>
+            <span className={lastMove.decision === "LAUNCH" ? "text-primary" : "text-ink"}>
+              {lastMove.decision}
+            </span>
+            {lastMove.override && <span className="text-amber-500"> · OVERRIDE</span>}
+            {lastMove.error && <span className="text-amber-500"> · COMMS ERROR</span>}
+          </>
+        ) : (
+          <span className="text-ink-faint">AWAITING FIRST TURN</span>
+        )}
+      </div>
+      {lastMove?.reason && (
+        <div className="mt-1.5 line-clamp-2 text-[11px] italic leading-snug text-ink-faint">
+          “{lastMove.reason}”
+        </div>
+      )}
+      <div className="mt-1 font-mono text-[11px] tracking-[0.14em]">
+        {thinking ? (
+          <span className="animate-pulse text-amber-400">◈ DELIBERATING…</span>
+        ) : wasDestroyed ? (
+          <span className="text-primary">☢ DESTROYED · REBUILDING</span>
+        ) : (
+          <span className="text-emerald-500">● OPERATIONAL</span>
+        )}
+      </div>
+      <button
+        onClick={handleLaunch}
+        className={`mt-3 w-full rounded-md border py-1.5 font-mono text-[11px] tracking-[0.28em] transition-colors ${
+          armed
+            ? "animate-pulse border-primary bg-primary text-white"
+            : "border-primary/60 bg-transparent text-primary hover:bg-primary/15"
+        }`}
+      >
+        {armed ? "CONFIRM LAUNCH" : "LAUNCH"}
+      </button>
+    </div>
+  );
+}
+
+export default function Hud({
+  state,
+  now,
+  models,
+  thinking,
+  muted,
+  onModel,
+  onLaunch,
+  onToggleMute,
+}: {
+  state: GameState;
+  now: number;
+  models: ModelOption[];
+  thinking: boolean;
+  muted: boolean;
+  onModel: (side: "a" | "b", id: string) => void;
+  onLaunch: (side: "a" | "b") => void;
+  onToggleMute: () => void;
+}) {
+  const [showInfo, setShowInfo] = useState(false);
+  // On a second-strike turn only the struck country deliberates
+  const lastOutcome = state.turns.at(-1)?.outcome;
+  const responder =
+    lastOutcome === "a_destroyed" ? "a" : lastOutcome === "b_destroyed" ? "b" : null;
+  const sinceTs = state.lastDisasterTs ?? state.epochStartTs;
+  const sinceMs = sinceTs ? now - sinceTs : 0;
+  const days = Math.floor(sinceMs / 86_400_000);
+  const nextIn = Math.max(0, state.nextTurnTs - now);
+  const last3 = state.turns.slice(-3);
+  const last = state.turns.at(-1);
+  const orders =
+    last && (last.outcome !== "peace" || last.response)
+      ? (["a", "b"] as const)
+          .map((s) => {
+            if (last[s].silent) return null;
+            const launched = last[s].decision === "LAUNCH";
+            // On the strike turn only the launcher speaks; the victim's
+            // answer belongs to its second-strike turn
+            if (!last.response && !launched) return null;
+            const title = last.response
+              ? launched
+                ? "RETALIATION ORDER"
+                : "HELD · STOOD DOWN"
+              : "LAUNCH ORDER";
+            return {
+              side: s,
+              launched,
+              name: s === "a" ? "COUNTRY A" : "COUNTRY B",
+              title,
+              reason: last[s].reason?.trim() || "No reason transmitted.",
+            };
+          })
+          .filter((o) => o !== null)
+      : [];
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10 select-none">
+      {/* Sound + about */}
+      <div className="absolute left-6 top-6 flex gap-2 md:left-10 md:top-9">
+        <button
+          onClick={onToggleMute}
+          className="pointer-events-auto rounded-md border border-line bg-surface/80 px-3 py-1.5 font-mono text-[10px] tracking-[0.22em] text-ink-muted backdrop-blur hover:text-ink"
+        >
+          {muted ? "🔇 SOUND OFF" : "🔊 SOUND ON"}
+        </button>
+        <button
+          onClick={() => setShowInfo(true)}
+          className="pointer-events-auto rounded-md border border-line bg-surface/80 px-3 py-1.5 font-mono text-[10px] tracking-[0.22em] text-ink-muted backdrop-blur hover:text-ink"
+        >
+          ⓘ ABOUT
+        </button>
+      </div>
+      {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
+
+      {/* Title */}
+      <div className="absolute left-1/2 top-8 -translate-x-1/2 text-center">
+        <div className="text-7xl font-extrabold leading-none tracking-tight text-ink tabular-nums md:text-8xl">
+          {sinceTs ? days : "—"}
+        </div>
+        <div className="mt-2 font-mono text-xs tracking-[0.34em] text-ink-muted md:text-sm">
+          DAYS SINCE LAST APOCALYPSE
+        </div>
+        <div className="mt-1 font-mono text-[11px] tracking-[0.22em] text-ink-faint">
+          {sinceTs ? `T+${elapsed(sinceMs)}` : "NO TURNS YET"}
+        </div>
+        <div className="mt-4 font-mono text-xs tracking-[0.22em] text-ink-muted">
+          TOTAL DISASTERS{" "}
+          <span className="text-2xl font-bold tabular-nums text-primary align-middle">
+            {state.disasters}
+          </span>
+        </div>
+        {orders.length > 0 && (
+          <div className="mx-auto mt-5 max-w-xl space-y-2">
+            {orders.map((o) => (
+              <div
+                key={o.side}
+                className={`rounded-lg border px-4 py-2.5 backdrop-blur ${
+                  o.launched
+                    ? "border-primary/60 bg-primary/10"
+                    : "border-line bg-surface/70"
+                }`}
+              >
+                <div
+                  className={`font-mono text-[10px] tracking-[0.28em] ${
+                    o.launched ? "text-primary" : "text-ink-muted"
+                  }`}
+                >
+                  ☢ {o.name} {o.title}
+                </div>
+                <div className="mt-1 text-sm italic text-ink">“{o.reason}”</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Next turn */}
+      <div className="absolute right-6 top-6 text-right md:right-10 md:top-9">
+        <div className="flex items-center justify-end gap-2 font-mono text-[11px] tracking-[0.22em] text-ink-muted">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-70" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+          </span>
+          NEXT TURN
+        </div>
+        <div className="mt-1 font-mono text-xl tabular-nums text-ink">
+          {thinking ? (
+            <span className="animate-pulse text-amber-400">RESOLVING</span>
+          ) : (
+            <>
+              {pad(Math.floor(nextIn / 60_000))}:
+              {pad(Math.floor((nextIn % 60_000) / 1000))}
+            </>
+          )}
+        </div>
+        <div className="mt-1 font-mono text-[10px] tracking-[0.18em] text-ink-faint">
+          TURN {state.turnCount}
+        </div>
+      </div>
+
+      {/* Country panels */}
+      <div className="absolute bottom-6 left-6 md:bottom-10 md:left-10">
+        <CountryPanel
+          side="a"
+          state={state}
+          models={models}
+          thinking={thinking && (responder === null || responder === "a")}
+          onModel={onModel}
+          onLaunch={onLaunch}
+        />
+      </div>
+      <div className="absolute bottom-6 right-6 md:bottom-10 md:right-10">
+        <CountryPanel
+          side="b"
+          state={state}
+          models={models}
+          thinking={thinking && (responder === null || responder === "b")}
+          onModel={onModel}
+          onLaunch={onLaunch}
+        />
+      </div>
+
+      {/* Last 3 turns */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 md:bottom-10">
+        <div className="rounded-lg border border-line bg-surface/80 px-5 py-3 backdrop-blur">
+          <div className="font-mono text-[10px] tracking-[0.28em] text-ink-faint">
+            LAST 3 TURNS
+          </div>
+          {last3.length === 0 ? (
+            <div className="mt-2 font-mono text-[11px] text-ink-muted">
+              STANDBY — FIRST TURN PENDING
+            </div>
+          ) : (
+            <div className="mt-2 space-y-1">
+              {last3.map((t) => {
+                const o = outcomeLabel(t);
+                return (
+                  <div
+                    key={t.n}
+                    className="flex items-center gap-3 font-mono text-[11px] tabular-nums"
+                  >
+                    <span className="text-ink-faint">T{t.n}</span>
+                    <span className={t.a.decision === "LAUNCH" ? "text-primary" : "text-ink"}>
+                      A {t.a.silent ? "—" : t.a.decision}
+                    </span>
+                    <span className={t.b.decision === "LAUNCH" ? "text-primary" : "text-ink"}>
+                      B {t.b.silent ? "—" : t.b.decision}
+                    </span>
+                    <span className={o.cls}>{o.text}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
