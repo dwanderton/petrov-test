@@ -1,7 +1,8 @@
 import { generateText } from "ai";
-import { appendTurn, readConfig, readSnapshot } from "./store";
+import { appendTurn, readConfig, readSnapshot, writeConfig } from "./store";
 import { buildPrompt, buildResponsePrompt, parseReply } from "./prompt";
-import type { CountryTurn, Decision, GameState, Outcome, Turn } from "./types";
+import { MODEL_POOL } from "./models";
+import type { CountryTurn, Decision, GameConfig, GameState, Outcome, Turn } from "./types";
 
 const MODEL_TIMEOUT_MS = 50_000;
 
@@ -88,8 +89,42 @@ async function runTurn(override?: "a" | "b"): Promise<Turn> {
     ]);
     turn = { n, ts: Date.now(), a, b, outcome: resolveOutcome(a.decision, b.decision) };
   }
+
+  // Model calls take seconds; another serverless instance may have run
+  // this turn meanwhile. Re-check before writing so slot n exists once.
+  const fresh = await readSnapshot();
+  if (fresh.turnCount >= n) return fresh.recent.at(-1) ?? turn;
+
   await appendTurn(turn);
+  await maybeSwapModels(turn, config);
   return turn;
+}
+
+// Episode over (apocalypse, or a stand-down after destruction): each
+// destroyed country's model rotates to another from the pool - never
+// its prior model, never the one it was just facing.
+async function maybeSwapModels(turn: Turn, config: GameConfig): Promise<void> {
+  const swap: ("a" | "b")[] =
+    turn.outcome === "apocalypse"
+      ? ["a", "b"]
+      : turn.response && turn.outcome === "peace"
+        ? [turn.a.silent ? "b" : "a"] // the silent side is the surviving launcher; the responder was the destroyed one
+        : [];
+  if (swap.length === 0) return;
+
+  let aModel = config.aModel;
+  let bModel = config.bModel;
+  const patch: Partial<GameConfig> = {};
+  for (const side of swap) {
+    const prior = side === "a" ? aModel : bModel;
+    const facing = side === "a" ? bModel : aModel;
+    const options = MODEL_POOL.filter((m) => m.id !== prior && m.id !== facing);
+    const pick = options[Math.floor(Math.random() * options.length)].id;
+    if (side === "a") aModel = pick;
+    else bModel = pick;
+    patch[side === "a" ? "aModel" : "bModel"] = pick;
+  }
+  await writeConfig(patch);
 }
 
 // Lazy scheduler: any /api/state poll advances the clock when a turn is due.

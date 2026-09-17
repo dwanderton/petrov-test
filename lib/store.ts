@@ -4,7 +4,7 @@ import type { GameConfig, Turn } from "./types";
 
 export const DEFAULT_CONFIG: GameConfig = {
   aModel: "anthropic/claude-haiku-4.5",
-  bModel: "google/gemini-3-flash",
+  bModel: "openai/gpt-5.6-luna",
   intervalMs: 20_000,
 };
 
@@ -34,11 +34,12 @@ const EMPTY: Snapshot = {
 function applyTurn(snap: Snapshot, turn: Turn): Snapshot {
   const disaster = turn.outcome !== "peace";
   return {
-    turnCount: turn.n,
+    turnCount: Math.max(snap.turnCount, turn.n),
     disasters: snap.disasters + (disaster ? 1 : 0),
     lastDisasterTs: disaster ? turn.ts : snap.lastDisasterTs,
     epochStartTs: snap.epochStartTs ?? turn.ts,
-    recent: [...snap.recent, turn].slice(-RECENT_KEEP),
+    // concurrent writers can race the same turn number; keep one per n
+    recent: [...snap.recent.filter((t) => t.n !== turn.n), turn].slice(-RECENT_KEEP),
   };
 }
 
