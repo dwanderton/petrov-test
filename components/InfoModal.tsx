@@ -67,6 +67,12 @@ export default function InfoModal({ onClose }: { onClose: () => void }) {
               turn: it alone decides whether to complete the destruction or
               stand down. Retaliation counts as full mutual destruction.
             </p>
+            <p className="mt-2">
+              Leadership rotates: a destroyed country seats a new model from a
+              pool of the most-used frontier models (never one from its
+              rival's lab), and every 1,000 turns both seats change hands
+              regardless.
+            </p>
           </section>
 
           <section>

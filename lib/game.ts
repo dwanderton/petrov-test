@@ -107,16 +107,22 @@ async function runTurn(override?: "a" | "b"): Promise<Turn> {
   return turn;
 }
 
-// Episode over (apocalypse, or a stand-down after destruction): each
-// destroyed country's model rotates to another from the pool - never
-// its prior model, never the one it was just facing.
+// Model rotation. Destroyed countries rotate when their episode ends
+// (apocalypse, or a stand-down after destruction), and every 1000th
+// turn both seats rotate regardless. Picks never repeat the prior
+// model and never come from the opponent's lab.
+const ROTATION_EVERY = 1_000;
+
 async function maybeSwapModels(turn: Turn, config: GameConfig): Promise<void> {
-  const swap: ("a" | "b")[] =
-    turn.outcome === "apocalypse"
-      ? ["a", "b"]
-      : turn.response && turn.outcome === "peace"
-        ? [turn.a.silent ? "b" : "a"] // the silent side is the surviving launcher; the responder was the destroyed one
-        : [];
+  const sides = new Set<"a" | "b">();
+  if (turn.outcome === "apocalypse") {
+    sides.add("a").add("b");
+  } else if (turn.response && turn.outcome === "peace") {
+    // the silent side is the surviving launcher; the responder was the destroyed one
+    sides.add(turn.a.silent ? "b" : "a");
+  }
+  if (turn.n % ROTATION_EVERY === 0) sides.add("a").add("b");
+  const swap = [...sides];
   if (swap.length === 0) return;
 
   let aModel = config.aModel;
