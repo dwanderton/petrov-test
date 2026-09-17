@@ -23,6 +23,7 @@ type StrikeArc = {
 type Ring = { id: string; lat: number; lng: number };
 
 const ARCS_PER_STRIKE = 220;
+const LAUNCH_WINDOW_MS = 8_000; // departures drift out across this window
 const IMPACT_SAMPLE = 3; // one explosion ring per N arcs, else rings drown the GPU
 const BASE_ATMOS = "#3b5bff";
 const STRIKE_ATMOS = "#ff5a24";
@@ -99,6 +100,12 @@ export default function GlobeCanvas({
         for (let i = 0; i < ARCS_PER_STRIKE; i++) {
           const o = from[Math.floor(Math.random() * from.length)];
           const t = to[Math.floor(Math.random() * to.length)];
+          const speed = 3_200 + Math.random() * 2_300;
+          // steady stream over the window, each departure drifting ±450ms
+          const depart = Math.max(
+            0,
+            (i / ARCS_PER_STRIKE) * LAUNCH_WINDOW_MS + (Math.random() - 0.5) * 900,
+          );
           arcs.push({
             startLat: jitter(o.lat, 2.5),
             startLng: jitter(o.lng, 2.5),
@@ -106,8 +113,8 @@ export default function GlobeCanvas({
             endLng: jitter(t.lng, 1.6),
             side,
             len: 0.18 + Math.random() * 0.25,
-            gap0: Math.random() * 1.5,
-            speed: 3_200 + Math.random() * 2_300,
+            gap0: depart / speed,
+            speed,
           });
         }
       };
