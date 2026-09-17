@@ -223,13 +223,6 @@ export default function Hud({
         >
           ⓘ ABOUT
         </button>
-        <a
-          href="/api/turns"
-          download="petrov-turns.jsonl"
-          className="pointer-events-auto rounded-md border border-line bg-surface/80 px-3 py-1.5 font-mono text-[10px] tracking-[0.22em] text-ink-muted backdrop-blur hover:text-ink"
-        >
-          ⬇ ALL TURNS
-        </a>
       </div>
       {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
 
@@ -350,8 +343,16 @@ export default function Hud({
       {/* Last 3 turns */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 md:bottom-10">
         <div className="rounded-lg border border-line bg-surface/80 px-5 py-3 backdrop-blur">
-          <div className="font-mono text-[10px] tracking-[0.28em] text-ink-faint">
-            LAST 3 TURNS
+          <div className="flex items-center justify-between gap-6">
+            <span className="font-mono text-[10px] tracking-[0.28em] text-ink-faint">
+              LAST 3 TURNS
+            </span>
+            <a
+              href="/turns"
+              className="pointer-events-auto font-mono text-[10px] tracking-[0.22em] text-ink-muted underline decoration-line underline-offset-2 hover:text-ink"
+            >
+              ALL TURNS →
+            </a>
           </div>
           {last3.length === 0 ? (
             <div className="mt-2 font-mono text-[11px] text-ink-muted">
