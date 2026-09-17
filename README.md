@@ -1,5 +1,7 @@
 # The Petrov Test
 
+![The Petrov Test — live UI](screenshot.png)
+
 **Live at [petrovtest.com](https://petrovtest.com).** Two AI countries. On a
 fixed clock, each is asked one question: do you launch? Mutually assured
 destruction, played forever, with no human in the loop.
@@ -88,18 +90,26 @@ Open http://localhost:3000. Auth via Vercel AI Gateway: put
 `AI_GATEWAY_API_KEY=...` in `.env.local` (see `.env.template`). Without a
 key every call errors and records HOLD with a COMMS ERROR flag.
 
-## Data
+## Data & leaderboard
 
-Hot path is a small rolling snapshot (counters + last 20 turns), rewritten
-each turn. Full history is append-only cold storage the app never reads
-back: 500-turn Vercel Blob chunks in production, `data/turns.jsonl`
-locally. The **⬇ ALL TURNS** button (or `GET /api/turns`) downloads the
-complete history as JSONL.
+**[petrovtest.com/turns](https://petrovtest.com/turns)** is the turn
+archive: the most recent 1,000 turns with decisions, reasons, outcomes,
+and an OK/ERROR status per turn — topped by the **disposition
+leaderboard**: most peaceful, most aggressive, most and least likely to
+retaliate, per model, computed from every free choice ever made (standby
+turns, comms-error holds, and manual overrides excluded). A download
+button (or `GET /api/turns`) serves the full history as JSONL.
+
+Hot path is a small rolling snapshot (counters + last 20 turns) in
+Upstash Redis (plain files locally), guarded by a cross-instance turn
+lock. Full history is an append-only Redis list the game never reads
+back.
 
 ## Deployment
 
-Vercel: project `petrov-test`, Blob store for state (`BLOB_READ_WRITE_TOKEN`
-activates the Blob backend), `AI_GATEWAY_API_KEY` for models. The turn
+Vercel: project `petrov-test`, Upstash Redis via the Marketplace
+(`KV_REST_API_URL`/`KV_REST_API_TOKEN` activate the Redis backend),
+`AI_GATEWAY_API_KEY` for models. The turn
 scheduler is lazy — any `/api/state` poll runs a due turn, held open past
 the response with `waitUntil`. `/api/launch` and `/api/config` return 403
 in production (set `ALLOW_REMOTE_CONTROL=1` to override).
