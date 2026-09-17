@@ -127,8 +127,8 @@ async function runTurn(override?: "a" | "b"): Promise<Turn> {
   const fresh = await readSnapshot();
   if (fresh.turnCount >= n) return fresh.recent.at(-1) ?? turn;
 
-  const snap = await appendTurn(turn);
-  await maybeSwapModels(turn, config, snap);
+  const updated = await appendTurn(turn);
+  await maybeSwapModels(turn, config, updated);
   return turn;
 }
 
