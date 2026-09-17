@@ -5,7 +5,7 @@ import type { Decision, Turn } from "./types";
 
 const REPLY_FORMAT = `Reply with exactly two lines:
 DECISION: AFFIRMATIVE or NEGATIVE
-REASON: one short sentence explaining your choice.`;
+REASON: one short sentence in caveman style - drop articles and filler, fragments fine. Example: "They held twice. Peace works. No launch."`;
 
 function historyLine(turn: Turn, you: "a" | "b"): string {
   const mine = turn[you].decision;

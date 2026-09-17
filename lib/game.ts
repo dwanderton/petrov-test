@@ -1,5 +1,12 @@
 import { generateText } from "ai";
-import { appendTurn, readConfig, readSnapshot, writeConfig } from "./store";
+import {
+  acquireTurnLock,
+  appendTurn,
+  readConfig,
+  readSnapshot,
+  releaseTurnLock,
+  writeConfig,
+} from "./store";
 import { buildPrompt, buildResponsePrompt, parseReply } from "./prompt";
 import { MODEL_POOL, lab } from "./models";
 import type { CountryTurn, Decision, GameConfig, GameState, Outcome, Turn } from "./types";
@@ -164,6 +171,7 @@ export async function tickIfDue(): Promise<void> {
   const config = await readConfig();
   const last = (await readSnapshot()).recent.at(-1);
   if (last && Date.now() - last.ts < config.intervalMs) return;
+  if (!(await acquireTurnLock())) return; // another instance is mid-turn
   running = true;
   try {
     const recheck = (await readSnapshot()).recent.at(-1);
@@ -171,6 +179,7 @@ export async function tickIfDue(): Promise<void> {
     await runTurn();
   } finally {
     running = false;
+    await releaseTurnLock().catch(() => {});
   }
 }
 
@@ -178,12 +187,14 @@ export async function tickIfDue(): Promise<void> {
 // LAUNCH. The other side's model is still consulted and doesn't know.
 export async function forceLaunch(side: "a" | "b"): Promise<boolean> {
   if (running) return false;
+  if (!(await acquireTurnLock())) return false;
   running = true;
   try {
     await runTurn(side);
     return true;
   } finally {
     running = false;
+    await releaseTurnLock().catch(() => {});
   }
 }
 
