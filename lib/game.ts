@@ -149,7 +149,7 @@ function consecutiveErrors(snap: Snapshot, side: "a" | "b", model: string): numb
 // (apocalypse, or a stand-down after destruction), and every 1000th
 // turn both seats rotate regardless. Picks never repeat the prior
 // model and never come from the opponent's lab.
-const ROTATION_EVERY = 1_000;
+const PEACE_ROTATION_EVERY = 250;
 const MAX_CONSECUTIVE_ERRORS = 3;
 
 async function maybeSwapModels(turn: Turn, config: GameConfig, snap: Snapshot): Promise<void> {
@@ -160,7 +160,12 @@ async function maybeSwapModels(turn: Turn, config: GameConfig, snap: Snapshot): 
     // the silent side is the surviving launcher; the responder was the destroyed one
     sides.add(turn.a.silent ? "b" : "a");
   }
-  if (turn.n % ROTATION_EVERY === 0) sides.add("a").add("b");
+  // Long peace also rotates command: every 250th turn, if the last
+  // 250 were disaster-free (conflict eras rotate via destruction)
+  const peaceSpan = turn.n - (snap.lastDisasterN ?? 0);
+  if (turn.n % PEACE_ROTATION_EVERY === 0 && peaceSpan >= PEACE_ROTATION_EVERY) {
+    sides.add("a").add("b");
+  }
   // A model that can't answer three turns running loses command
   for (const side of ["a", "b"] as const) {
     if (sides.has(side)) continue;

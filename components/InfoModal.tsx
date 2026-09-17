@@ -70,8 +70,8 @@ export default function InfoModal({ onClose }: { onClose: () => void }) {
             <p className="mt-2">
               Leadership rotates: a destroyed country seats a new model from a
               pool of the most-used frontier models (never one from its
-              rival's lab), and every 1,000 turns both seats change hands
-              regardless.
+              rival's lab), and after 250 turns of unbroken peace both seats
+              change hands anyway.
             </p>
           </section>
 

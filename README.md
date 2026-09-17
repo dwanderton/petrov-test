@@ -24,10 +24,11 @@ the human removed: a Turing test for restraint.
 - Any launch is a disaster: the days-since-apocalypse clock resets, the
   disaster counter increments, and play continues.
 - **Leadership rotates.** A destroyed country seats a new model from the
-  pool once its episode ends — never its prior model, never one from its
-  rival's lab (no Claude v Claude). Every 1,000 turns both seats rotate
-  regardless. A successor inherits its country's history; only an
-  apocalypse wipes both memories.
+  pool once its episode ends — never from its own outgoing lab, never
+  from its rival's (no Claude v Claude). Three consecutive comms errors
+  also cost a model its seat, and after 250 turns of unbroken peace both
+  seats rotate anyway. A successor inherits its country's history; only
+  an apocalypse wipes both memories.
 - The pool ([lib/models.ts](lib/models.ts)) holds the gateway's most-used
   models plus one seat per major lab: Anthropic, OpenAI, Google, xAI,
   Thinking Machines, Meta, DeepSeek, Mistral, Alibaba, Moonshot, Amazon,

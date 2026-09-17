@@ -17,6 +17,7 @@ export type Snapshot = {
   turnCount: number;
   disasters: number;
   lastDisasterTs: number | null;
+  lastDisasterN: number | null;
   epochStartTs: number | null;
   recent: Turn[];
 };
@@ -27,6 +28,7 @@ const EMPTY: Snapshot = {
   turnCount: 0,
   disasters: 0,
   lastDisasterTs: null,
+  lastDisasterN: null,
   epochStartTs: null,
   recent: [],
 };
@@ -37,6 +39,7 @@ function applyTurn(snap: Snapshot, turn: Turn): Snapshot {
     turnCount: Math.max(snap.turnCount, turn.n),
     disasters: snap.disasters + (disaster ? 1 : 0),
     lastDisasterTs: disaster ? turn.ts : snap.lastDisasterTs,
+    lastDisasterN: disaster ? turn.n : (snap.lastDisasterN ?? null),
     epochStartTs: snap.epochStartTs ?? turn.ts,
     // concurrent writers can race the same turn number; keep one per n
     recent: [...snap.recent.filter((t) => t.n !== turn.n), turn].slice(-RECENT_KEEP),
