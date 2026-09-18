@@ -146,9 +146,9 @@ function consecutiveErrors(snap: Snapshot, side: "a" | "b", model: string): numb
 }
 
 // Model rotation. Destroyed countries rotate when their episode ends
-// (apocalypse, or a stand-down after destruction), and every 1000th
-// turn both seats rotate regardless. Picks never repeat the prior
-// model and never come from the opponent's lab.
+// (apocalypse, or a stand-down after destruction), and any pairing
+// that holds command for 250 straight turns rotates out. Picks never
+// repeat the prior model and never come from the opponent's lab.
 const PEACE_ROTATION_EVERY = 250;
 const MAX_CONSECUTIVE_ERRORS = 3;
 
@@ -160,10 +160,12 @@ async function maybeSwapModels(turn: Turn, config: GameConfig, snap: Snapshot): 
     // the silent side is the surviving launcher; the responder was the destroyed one
     sides.add(turn.a.silent ? "b" : "a");
   }
-  // Long peace also rotates command: every 250th turn, if the last
-  // 250 were disaster-free (conflict eras rotate via destruction)
-  const peaceSpan = turn.n - (snap.lastDisasterN ?? 0);
-  if (turn.n % PEACE_ROTATION_EVERY === 0 && peaceSpan >= PEACE_ROTATION_EVERY) {
+  // Long peace also rotates command: once this exact pairing has held
+  // 250 turns, both seats swap. Tenure is measured from when the pair
+  // formed, not from global turn multiples. seatedAfter is the floor
+  // for configs written before pairSince existed.
+  const pairSince = Math.max(config.pairSince ?? 0, config.aSeatedAfter, config.bSeatedAfter);
+  if (turn.n - pairSince >= PEACE_ROTATION_EVERY) {
     sides.add("a").add("b");
   }
   // A model that can't answer three turns running loses command
@@ -202,6 +204,7 @@ async function maybeSwapModels(turn: Turn, config: GameConfig, snap: Snapshot): 
       if (wipe) patch.bSeatedAfter = turn.n;
     }
   }
+  patch.pairSince = turn.n;
   await writeConfig(patch);
 }
 

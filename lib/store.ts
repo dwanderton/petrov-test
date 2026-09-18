@@ -8,6 +8,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   intervalMs: 20_000,
   aSeatedAfter: 0,
   bSeatedAfter: 0,
+  pairSince: 0,
 };
 
 // Everything the game and UI read comes from a small rolling snapshot,

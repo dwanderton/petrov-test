@@ -29,6 +29,8 @@ export type GameConfig = {
   // only sees history from turns it actually played
   aSeatedAfter: number;
   bSeatedAfter: number;
+  // turn on which the current pairing was formed (any seat change resets it)
+  pairSince: number;
 };
 
 export type GameState = {
