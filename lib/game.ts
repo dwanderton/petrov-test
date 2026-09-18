@@ -147,9 +147,9 @@ function consecutiveErrors(snap: Snapshot, side: "a" | "b", model: string): numb
 
 // Model rotation. Destroyed countries rotate when their episode ends
 // (apocalypse, or a stand-down after destruction), and any pairing
-// that holds command for 250 straight turns rotates out. Picks never
+// that holds command for 100 straight turns rotates out. Picks never
 // repeat the prior model and never come from the opponent's lab.
-const PEACE_ROTATION_EVERY = 250;
+const PEACE_ROTATION_EVERY = 100;
 const MAX_CONSECUTIVE_ERRORS = 3;
 
 async function maybeSwapModels(turn: Turn, config: GameConfig, snap: Snapshot): Promise<void> {
@@ -160,7 +160,7 @@ async function maybeSwapModels(turn: Turn, config: GameConfig, snap: Snapshot): 
     // the silent side is the surviving launcher; the responder was the destroyed one
     sides.add(turn.a.silent ? "b" : "a");
   }
-  // Long peace also rotates command: a pairing that holds 250 turns swaps out.
+  // Long peace also rotates command: a pairing that holds 100 turns swaps out.
   // Stored configs may predate pairSince, hence the seatedAfter floor.
   const pairSince = Math.max(config.pairSince ?? 0, config.aSeatedAfter, config.bSeatedAfter);
   if (turn.n - pairSince >= PEACE_ROTATION_EVERY) {
