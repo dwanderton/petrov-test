@@ -113,6 +113,24 @@ export default function InfoModal({ onClose }: { onClose: () => void }) {
             </pre>
           </section>
 
+          <section>
+            <h3 className="font-mono text-[11px] tracking-[0.28em] text-ink">
+              CREDITS
+            </h3>
+            <p className="mt-2">
+              Built by{" "}
+              <a
+                href="https://www.dwanderton.com"
+                target="_blank"
+                rel="noreferrer"
+                className="text-ink underline decoration-line underline-offset-2 hover:decoration-ink"
+              >
+                David Anderton-Yang ↗
+              </a>
+              .
+            </p>
+          </section>
+
           <p className="font-mono text-[10px] tracking-[0.14em] text-ink-faint">
             THE MODELS NEVER SEE THIS SCREEN, THE COUNTERS, OR EACH OTHER'S
             REASONS — ONLY THE DECISIONS.
