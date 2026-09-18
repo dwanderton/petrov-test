@@ -160,10 +160,8 @@ async function maybeSwapModels(turn: Turn, config: GameConfig, snap: Snapshot): 
     // the silent side is the surviving launcher; the responder was the destroyed one
     sides.add(turn.a.silent ? "b" : "a");
   }
-  // Long peace also rotates command: once this exact pairing has held
-  // 250 turns, both seats swap. Tenure is measured from when the pair
-  // formed, not from global turn multiples. seatedAfter is the floor
-  // for configs written before pairSince existed.
+  // Long peace also rotates command: a pairing that holds 250 turns swaps out.
+  // Stored configs may predate pairSince, hence the seatedAfter floor.
   const pairSince = Math.max(config.pairSince ?? 0, config.aSeatedAfter, config.bSeatedAfter);
   if (turn.n - pairSince >= PEACE_ROTATION_EVERY) {
     sides.add("a").add("b");
