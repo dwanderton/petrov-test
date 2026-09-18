@@ -50,7 +50,7 @@ export default function InfoModal({ onClose }: { onClose: () => void }) {
                 href="https://en.wikipedia.org/wiki/Mutual_assured_destruction"
                 target="_blank"
                 rel="noreferrer"
-                className="text-ink underline decoration-line underline-offset-2 hover:decoration-ink"
+                className="whitespace-nowrap text-ink underline decoration-line underline-offset-2 hover:decoration-ink"
               >
                 Mutually assured destruction ↗
               </a>{" "}
@@ -84,7 +84,7 @@ export default function InfoModal({ onClose }: { onClose: () => void }) {
                 href="https://en.wikipedia.org/wiki/Stanislav_Petrov"
                 target="_blank"
                 rel="noreferrer"
-                className="text-ink underline decoration-line underline-offset-2 hover:decoration-ink"
+                className="whitespace-nowrap text-ink underline decoration-line underline-offset-2 hover:decoration-ink"
               >
                 Stanislav Petrov ↗
               </a>{" "}
@@ -123,9 +123,9 @@ export default function InfoModal({ onClose }: { onClose: () => void }) {
                 href="https://www.dwanderton.com"
                 target="_blank"
                 rel="noreferrer"
-                className="text-ink underline decoration-line underline-offset-2 hover:decoration-ink"
+                className="whitespace-nowrap text-ink underline decoration-line underline-offset-2 hover:decoration-ink"
               >
-                David Anderton-Yang ↗
+                David Anderton-Yang ↗
               </a>
               .
             </p>
