@@ -10,7 +10,8 @@ export async function GET() {
     headers: {
       "Content-Type": "application/x-ndjson",
       "Content-Disposition": 'attachment; filename="petrov-turns.jsonl"',
-      "Cache-Control": "no-store",
+      // the archive only appends; let the CDN absorb repeat downloads
+      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
     },
   });
 }
