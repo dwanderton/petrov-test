@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@upstash/redis": "^1.38.4",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.8.0",
     "@vercel/functions": "^3.9.8",
     "ai": "^7.0.102",
