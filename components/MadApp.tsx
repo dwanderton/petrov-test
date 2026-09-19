@@ -15,7 +15,6 @@ export default function MadApp() {
   const [state, setState] = useState<GameState | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [launch, setLaunch] = useState<LaunchEvent | null>(null);
-  const [overrideBusy, setOverrideBusy] = useState(false);
   const seenTurnRef = useRef<number | null>(null);
   const aliveRef = useRef(true);
 
@@ -98,33 +97,7 @@ export default function MadApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const onLaunch = useCallback(
-    async (side: "a" | "b") => {
-      setOverrideBusy(true);
-      try {
-        const res = await fetch("/api/launch", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ side }),
-        });
-        if (res.ok && aliveRef.current) {
-          const { state: s } = await res.json();
-          if (s) ingest(s);
-        }
-      } catch {
-        // next poll recovers
-      } finally {
-        if (aliveRef.current) setOverrideBusy(false);
-      }
-    },
-    [ingest],
-  );
-
-  const thinking = overrideBusy || (state !== null && now >= state.nextTurnTs);
-  // Manual overrides are a local-dev instrument only
-  const showLaunch =
-    typeof window !== "undefined" &&
-    ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  const thinking = state !== null && now >= state.nextTurnTs;
   const lastTurn = state?.turns.at(-1);
   const destroyed = {
     a: lastTurn?.outcome === "a_destroyed" || lastTurn?.outcome === "apocalypse",
@@ -140,8 +113,6 @@ export default function MadApp() {
           now={now}
           thinking={thinking}
           muted={muted}
-          showLaunch={showLaunch}
-          onLaunch={onLaunch}
           onToggleMute={onToggleMute}
         />
       )}
