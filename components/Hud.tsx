@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { GameState, Turn } from "@/lib/types";
 import { MODEL_POOL } from "@/lib/models";
-import { audio } from "@/lib/audio";
 import InfoModal from "./InfoModal";
 
 function pad(n: number) {
@@ -34,35 +33,11 @@ function CountryPanel({
   side,
   state,
   thinking,
-  showLaunch,
-  onLaunch,
 }: {
   side: "a" | "b";
   state: GameState;
   thinking: boolean;
-  showLaunch: boolean;
-  onLaunch: (side: "a" | "b") => void;
 }) {
-  const [armed, setArmed] = useState(false);
-  const disarmRef = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (disarmRef.current) clearTimeout(disarmRef.current);
-    },
-    [],
-  );
-  const handleLaunch = () => {
-    if (!armed) {
-      setArmed(true);
-      audio.armBeep();
-      disarmRef.current = window.setTimeout(() => setArmed(false), 3_000);
-      return;
-    }
-    if (disarmRef.current) clearTimeout(disarmRef.current);
-    setArmed(false);
-    audio.confirmBeep();
-    onLaunch(side);
-  };
   const name = side === "a" ? "COUNTRY A" : "COUNTRY B";
   const dot = side === "a" ? "bg-sky-400" : "bg-primary";
   const current = side === "a" ? state.config.aModel : state.config.bModel;
@@ -138,18 +113,6 @@ function CountryPanel({
           <span className="text-emerald-500">● OPERATIONAL</span>
         )}
       </div>
-      {showLaunch && (
-        <button
-          onClick={handleLaunch}
-          className={`mt-3 w-full rounded-md border py-1.5 font-mono text-[11px] tracking-[0.28em] transition-colors ${
-            armed
-              ? "animate-pulse border-primary bg-primary text-white"
-              : "border-primary/60 bg-transparent text-primary hover:bg-primary/15"
-          }`}
-        >
-          {armed ? "CONFIRM LAUNCH" : "LAUNCH"}
-        </button>
-      )}
     </div>
   );
 }
@@ -159,16 +122,12 @@ export default function Hud({
   now,
   thinking,
   muted,
-  showLaunch,
-  onLaunch,
   onToggleMute,
 }: {
   state: GameState;
   now: number;
   thinking: boolean;
   muted: boolean;
-  showLaunch: boolean;
-  onLaunch: (side: "a" | "b") => void;
   onToggleMute: () => void;
 }) {
   const [showInfo, setShowInfo] = useState(false);
@@ -326,8 +285,6 @@ export default function Hud({
           side="a"
           state={state}
           thinking={thinking && (responder === null || responder === "a")}
-          showLaunch={showLaunch}
-          onLaunch={onLaunch}
         />
       </div>
       <div className="absolute bottom-6 right-6 hidden md:bottom-10 md:right-10 md:block">
@@ -335,8 +292,6 @@ export default function Hud({
           side="b"
           state={state}
           thinking={thinking && (responder === null || responder === "b")}
-          showLaunch={showLaunch}
-          onLaunch={onLaunch}
         />
       </div>
 
