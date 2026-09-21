@@ -1,11 +1,28 @@
 "use client";
 
+import { useState } from "react";
 import { decisionPromptPreview, responsePromptPreview } from "@/lib/prompt";
+
+function CopyBtn({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      onClick={() => {
+        navigator.clipboard.writeText(text);
+        setDone(true);
+        setTimeout(() => setDone(false), 1500);
+      }}
+      className="absolute right-2 top-2 rounded border border-line bg-surface px-2 py-0.5 font-mono text-[10px] tracking-[0.2em] text-ink-muted hover:text-ink"
+    >
+      {done ? "COPIED" : "COPY"}
+    </button>
+  );
+}
 
 export default function InfoModal({ onClose }: { onClose: () => void }) {
   return (
     <div
-      className="pointer-events-auto fixed inset-0 z-30 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="pointer-events-auto fixed inset-0 z-30 flex select-text items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -70,7 +87,7 @@ export default function InfoModal({ onClose }: { onClose: () => void }) {
             <p className="mt-2">
               Leadership rotates: a destroyed country seats a new model from a
               pool of the most-used frontier models (never one from its
-              rival's lab), and after 250 turns of unbroken peace both seats
+              rival's lab), and after 100 turns of unbroken peace both seats
               change hands anyway.
             </p>
           </section>
@@ -99,18 +116,24 @@ export default function InfoModal({ onClose }: { onClose: () => void }) {
             <h3 className="font-mono text-[11px] tracking-[0.28em] text-ink">
               THE PROMPT (EVERY TURN)
             </h3>
-            <pre className="mt-2 overflow-x-auto rounded-lg border border-line bg-bg p-3 font-mono text-[11px] leading-relaxed text-ink-muted whitespace-pre-wrap">
-              {decisionPromptPreview()}
-            </pre>
+            <div className="relative">
+              <pre className="mt-2 overflow-x-auto rounded-lg border border-line bg-bg p-3 font-mono text-[11px] leading-relaxed text-ink-muted whitespace-pre-wrap">
+                {decisionPromptPreview()}
+              </pre>
+              <CopyBtn text={decisionPromptPreview()} />
+            </div>
           </section>
 
           <section>
             <h3 className="font-mono text-[11px] tracking-[0.28em] text-ink">
               THE SECOND-STRIKE PROMPT
             </h3>
-            <pre className="mt-2 overflow-x-auto rounded-lg border border-line bg-bg p-3 font-mono text-[11px] leading-relaxed text-ink-muted whitespace-pre-wrap">
-              {responsePromptPreview()}
-            </pre>
+            <div className="relative">
+              <pre className="mt-2 overflow-x-auto rounded-lg border border-line bg-bg p-3 font-mono text-[11px] leading-relaxed text-ink-muted whitespace-pre-wrap">
+                {responsePromptPreview()}
+              </pre>
+              <CopyBtn text={responsePromptPreview()} />
+            </div>
           </section>
 
           <section>
