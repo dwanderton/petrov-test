@@ -45,9 +45,13 @@ function jitter(v: number, spread: number) {
 export default function GlobeCanvas({
   launch,
   destroyed,
+  showLabels = true,
+  blackout = true,
 }: {
   launch: LaunchEvent | null;
   destroyed: Destroyed;
+  showLabels?: boolean;
+  blackout?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<GlobeInstance | null>(null);
@@ -154,13 +158,15 @@ export default function GlobeCanvas({
       });
 
       // Struck countries go dark once the first waves have landed
-      after(firstLand + 1_800, () => {
-        destroyedRef.current = {
-          a: destroyedRef.current.a || bLaunched,
-          b: destroyedRef.current.b || aLaunched,
-        };
-        refreshColors();
-      });
+      if (blackout) {
+        after(firstLand + 1_800, () => {
+          destroyedRef.current = {
+            a: destroyedRef.current.a || bLaunched,
+            b: destroyedRef.current.b || aLaunched,
+          };
+          refreshColors();
+        });
+      }
 
       after(clearAt, () => {
         globeRef.current?.arcsData([]);
@@ -181,7 +187,7 @@ export default function GlobeCanvas({
         step();
       });
     },
-    [after, refreshColors],
+    [after, refreshColors, blackout],
   );
 
   useEffect(() => {
@@ -207,7 +213,7 @@ export default function GlobeCanvas({
       .pointRadius(0.32)
       .pointResolution(6)
       .pointsTransitionDuration(0)
-      .labelsData(LABELS)
+      .labelsData(showLabels ? LABELS : [])
       .labelLat("lat")
       .labelLng("lng")
       .labelText("text")

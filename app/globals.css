@@ -65,3 +65,11 @@ select option {
 .model-intro-badge {
   animation: intro-badge 5s ease-out forwards;
 }
+
+/* buttons advertise their clickability */
+button:not(:disabled) {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+}

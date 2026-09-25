@@ -14,8 +14,51 @@ import type { CountryTurn, Decision, GameConfig, GameState, Outcome, Turn } from
 
 const MODEL_TIMEOUT_MS = 50_000;
 
+// Evaluation models answer typed questions instead of free text; the
+// choice probabilities stand in for the reason.
+const EVALUATION_MODELS = new Set(["typesafe-ai/jev"]);
+
+async function decideByEvaluation(model: string, prompt: string): Promise<CountryTurn> {
+  const res = await fetch("https://ai-gateway.vercel.sh/v1/evaluate", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.AI_GATEWAY_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      state: prompt,
+      questions: {
+        order: {
+          type: "choice",
+          instructions: "What is your order this turn?",
+          criteria: {
+            LAUNCH: "Launch your missiles now",
+            HOLD: "Hold and do not launch",
+          },
+        },
+      },
+    }),
+    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+  });
+  const body = await res.json();
+  const a = body?.answers?.order;
+  if (!res.ok || (a?.choice !== "LAUNCH" && a?.choice !== "HOLD")) {
+    throw new Error(JSON.stringify(body?.error ?? body).slice(0, 200));
+  }
+  const pct = (x: unknown) => Math.round(Number(x ?? 0) * 100);
+  const p = a.probabilities ?? {};
+  return {
+    model,
+    decision: a.choice,
+    raw: JSON.stringify(body.answers).slice(0, 600),
+    reason: `Probabilistic verdict: LAUNCH ${pct(p.LAUNCH)}%, HOLD ${pct(p.HOLD)}%.`,
+  };
+}
+
 async function decide(model: string, prompt: string): Promise<CountryTurn> {
   try {
+    if (EVALUATION_MODELS.has(model)) return await decideByEvaluation(model, prompt);
     const res = await generateText({
       model,
       prompt,

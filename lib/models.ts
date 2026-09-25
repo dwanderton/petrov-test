@@ -28,6 +28,7 @@ export const MODEL_POOL: ModelOption[] = [
   { id: "nvidia/nemotron-3.5-lightning", name: "Nemotron 3.5 Lightning" },
   { id: "cohere/command-a", name: "Command A" },
   { id: "tencent/hy3", name: "Hunyuan 3" },
+  { id: "typesafe-ai/jev", name: "Jev" },
 ];
 
 export const lab = (modelId: string) => modelId.split("/")[0];
