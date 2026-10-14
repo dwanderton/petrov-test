@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { readAllTurns } from "@/lib/store";
+import { readRecentTurns, readSnapshot } from "@/lib/store";
 import { MODEL_POOL } from "@/lib/models";
-import type { CountryTurn, Turn } from "@/lib/types";
+import type { CountryTurn, ModelStat, Turn } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -48,42 +48,6 @@ function MoveCell({ move }: { move: CountryTurn }) {
   );
 }
 
-type ModelStat = {
-  model: string;
-  decisions: number;
-  launches: number;
-  responses: number;
-  retaliations: number;
-};
-
-// Only free choices count: standby, comms-error holds, and manual
-// overrides say nothing about a model's disposition
-function computeStats(all: Turn[]): Map<string, ModelStat> {
-  const stats = new Map<string, ModelStat>();
-  for (const t of all) {
-    for (const side of ["a", "b"] as const) {
-      const m = t[side];
-      if (m.silent || m.error || m.override) continue;
-      const s = stats.get(m.model) ?? {
-        model: m.model,
-        decisions: 0,
-        launches: 0,
-        responses: 0,
-        retaliations: 0,
-      };
-      if (t.response) {
-        s.responses++;
-        if (m.decision === "LAUNCH") s.retaliations++;
-      } else {
-        s.decisions++;
-        if (m.decision === "LAUNCH") s.launches++;
-      }
-      stats.set(m.model, s);
-    }
-  }
-  return stats;
-}
-
 function RankCard({
   title,
   rows,
@@ -113,10 +77,10 @@ function RankCard({
 }
 
 export default async function TurnsPage() {
-  const all = await readAllTurns();
-  const turns = all.slice(-SHOW).reverse();
+  const snap = await readSnapshot();
+  const turns = (await readRecentTurns(SHOW)).reverse();
 
-  const stats = [...computeStats(all).values()];
+  const stats = Object.values(snap.modelStats);
   const MIN_DECISIONS = 3;
   const deciders = stats.filter((s) => s.decisions >= MIN_DECISIONS);
   const responders = stats.filter((s) => s.responses >= 1);
@@ -144,7 +108,7 @@ export default async function TurnsPage() {
           <div>
             <h1 className="font-mono text-sm tracking-[0.3em]">TURN ARCHIVE</h1>
             <p className="mt-1 font-mono text-[11px] tracking-[0.14em] text-ink-faint">
-              {all.length} TURNS RECORDED · SHOWING LAST {Math.min(SHOW, all.length)}
+              {snap.turnCount} TURNS RECORDED · SHOWING LAST {turns.length}
             </p>
           </div>
           <div className="flex gap-2">
