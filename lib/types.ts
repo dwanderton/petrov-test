@@ -44,3 +44,14 @@ export type GameState = {
 };
 
 export type ModelOption = { id: string; name: string };
+
+// Lifetime per-model behaviour, accumulated into the snapshot one turn at
+// a time. Only free choices count: standby, comms-error holds, and manual
+// overrides say nothing about a model's disposition.
+export type ModelStat = {
+  model: string;
+  decisions: number;
+  launches: number;
+  responses: number;
+  retaliations: number;
+};

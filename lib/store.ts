@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { GameConfig, Turn } from "./types";
+import type { GameConfig, ModelStat, Turn } from "./types";
 
 export const DEFAULT_CONFIG: GameConfig = {
   aModel: "anthropic/claude-haiku-4.5",
@@ -21,6 +21,9 @@ export type Snapshot = {
   lastDisasterN: number | null;
   epochStartTs: number | null;
   recent: Turn[];
+  // Lifetime per-model tally keyed by model id, so the stats page never
+  // has to replay the full log. Seeded once by backfillModelStats.
+  modelStats: Record<string, ModelStat>;
 };
 
 const RECENT_KEEP = 20;
@@ -32,7 +35,38 @@ const EMPTY: Snapshot = {
   lastDisasterN: null,
   epochStartTs: null,
   recent: [],
+  modelStats: {},
 };
+
+// Fold one turn into the running per-model tally. Standby, comms-error
+// holds, and manual overrides are not free choices, so they don't count.
+export function tallyTurn(
+  stats: Record<string, ModelStat>,
+  turn: Turn,
+): Record<string, ModelStat> {
+  const next = { ...stats };
+  for (const side of ["a", "b"] as const) {
+    const m = turn[side];
+    if (m.silent || m.error || m.override) continue;
+    const s = next[m.model] ?? {
+      model: m.model,
+      decisions: 0,
+      launches: 0,
+      responses: 0,
+      retaliations: 0,
+    };
+    const u = { ...s };
+    if (turn.response) {
+      u.responses++;
+      if (m.decision === "LAUNCH") u.retaliations++;
+    } else {
+      u.decisions++;
+      if (m.decision === "LAUNCH") u.launches++;
+    }
+    next[m.model] = u;
+  }
+  return next;
+}
 
 function applyTurn(snap: Snapshot, turn: Turn): Snapshot {
   const disaster = turn.outcome !== "peace";
@@ -44,6 +78,7 @@ function applyTurn(snap: Snapshot, turn: Turn): Snapshot {
     epochStartTs: snap.epochStartTs ?? turn.ts,
     // concurrent writers can race the same turn number; keep one per n
     recent: [...snap.recent.filter((t) => t.n !== turn.n), turn].slice(-RECENT_KEEP),
+    modelStats: tallyTurn(snap.modelStats, turn),
   };
 }
 
@@ -141,15 +176,63 @@ export async function appendTurn(turn: Turn): Promise<Snapshot> {
   return snap;
 }
 
-// Full history export. Cold path only - the game never reads this back.
+// The tail of the log for the archive table. Bounded by design so it
+// stays well under Upstash's 10MB response cap no matter how long the
+// game runs.
+export async function readRecentTurns(limit: number): Promise<Turn[]> {
+  if (useRedis) {
+    const r = await redis();
+    const raw = await r.lrange<Turn | string>(TURNS_KEY, -limit, -1);
+    const turns = raw.map((v) => (typeof v === "string" ? (JSON.parse(v) as Turn) : v));
+    return turns.sort((x, y) => x.n - y.n);
+  }
+  return readTurnsFile().slice(-limit);
+}
+
+// Full history export. Cold path only - the game never reads this back
+// except for the JSONL download.
 export async function readAllTurns(): Promise<Turn[]> {
   if (useRedis) {
     const r = await redis();
-    const raw = await r.lrange<Turn | string>(TURNS_KEY, 0, -1);
+    // Upstash caps a single REST response at 10MB, so page the list
+    // instead of pulling every turn at once.
+    const PAGE = 2_000;
+    const raw: (Turn | string)[] = [];
+    for (let start = 0; ; start += PAGE) {
+      const chunk = await r.lrange<Turn | string>(TURNS_KEY, start, start + PAGE - 1);
+      raw.push(...chunk);
+      if (chunk.length < PAGE) break;
+    }
     const turns = raw.map((v) => (typeof v === "string" ? (JSON.parse(v) as Turn) : v));
     return turns.sort((x, y) => x.n - y.n);
   }
   return readTurnsFile();
+}
+
+// One-time seed of snapshot.modelStats from the full log, for history
+// that predates the running tally. Holds the turn lock so no in-flight
+// turn can clobber the write; overwrites rather than merges so it counts
+// every turn exactly once and is safe to re-run.
+export async function backfillModelStats(): Promise<Record<string, ModelStat>> {
+  if (!useRedis) {
+    const snap = localSnapshot();
+    return snap.modelStats;
+  }
+  const r = await redis();
+  for (let i = 0; i < 30; i++) {
+    if (await acquireTurnLock()) break;
+    if (i === 29) throw new Error("backfillModelStats: could not acquire turn lock");
+    await new Promise((res) => setTimeout(res, 2_000));
+  }
+  try {
+    const snap = (await readSnapshot());
+    let stats: Record<string, ModelStat> = {};
+    for (const t of await readAllTurns()) stats = tallyTurn(stats, t);
+    await r.set(STATE_KEY, { ...snap, modelStats: stats });
+    return stats;
+  } finally {
+    await releaseTurnLock().catch(() => {});
+  }
 }
 
 export async function readConfig(): Promise<GameConfig> {
